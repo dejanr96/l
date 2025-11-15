@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Find Polymarket 1H Tag ID</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #0ff;
+        }
+        .result {
+            background: #000;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        .success {
+            color: #0f0;
+            font-weight: bold;
+        }
+        .error {
+            color: #f00;
+        }
+        .highlight {
+            color: #ff0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: monospace;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0ff;
+        }
+        .tag-info {
+            background: #003300;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #0f0;
+        }
+        .time-tag {
+            background: #004400;
+            border-left: 3px solid #ff0;
+        }
+        .one-hour-tag {
+            background: #005500;
+            border-left: 5px solid #f0f;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { background: #005500; }
+            50% { background: #007700; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Find Polymarket 1H Tag ID</h1>
+
+        <p class="highlight">
+            Goal: Find the tag_id for 1-HOUR crypto markets (not 4-hour)
+        </p>
+
+        <p>
+            We know tag_id=102531 is for <span class="highlight">4H</span> markets.<br>
+            We need to find the tag_id for <span class="highlight">1H</span> markets.
+        </p>
+
+        <button onclick="findAllTags()">🚀 Find All Tags</button>
+        <button onclick="testCommonTagIds()">🔢 Test Common Tag IDs</button>
+        <button onclick="clearResults()">🗑️ Clear Results</button>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let resultsDiv = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            let className = 'result';
+            if (type === 'success') className += ' success';
+            if (type === 'error') className += ' error';
+
+            resultsDiv.innerHTML += `<div class="${className}">${message}</div>`;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+
+        async function findAllTags() {
+            clearResults();
+            log('='.repeat(60));
+            log('🔍 FINDING ALL TAGS FROM EVENTS', 'success');
+            log('='.repeat(60));
+
+            try {
+                log('Fetching all open events...');
+
+                const response = await fetch(
+                    'https://gamma-api.polymarket.com/events?closed=false&limit=100'
+                );
+
+                if (!response.ok) {
+                    log(`❌ Error: ${response.status}`, 'error');
+                    return;
+                }
+
+                const events = await response.json();
+                log(`✅ Got ${events.length} events`, 'success');
+
+                // Collect all unique tags
+                const allTags = new Map();
+                const tagToEvents = new Map();
+
+                events.forEach(event => {
+                    const title = event.title || '';
+                    const tags = event.tags || [];
+
+                    tags.forEach(tag => {
+                        const tagId = tag.id;
+                        if (tagId) {
+                            allTags.set(tagId, tag);
+
+                            if (!tagToEvents.has(tagId)) {
+                                tagToEvents.set(tagId, []);
+                            }
+                            tagToEvents.get(tagId).push(title);
+                        }
+                    });
+                });
+
+                log('');
+                log('='.repeat(60));
+                log(`📋 FOUND ${allTags.size} UNIQUE TAGS:`, 'success');
+                log('='.repeat(60));
+
+                // Sort and display tags
+                const sortedTags = Array.from(allTags.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+                sortedTags.forEach(([tagId, tag]) => {
+                    const label = tag.label || 'N/A';
+                    const slug = tag.slug || 'N/A';
+                    const eventCount = tagToEvents.get(tagId).length;
+
+                    // Check if this is a time-related tag
+                    const isTimeTag = /[0-9]+h/i.test(label) || /[0-9]+h/i.test(slug) ||
+                                     label.toLowerCase().includes('hour') ||
+                                     slug.toLowerCase().includes('hour');
+
+                    const is1H = label === '1H' || slug === '1h' || label === '1h';
+
+                    let className = 'tag-info';
+                    if (is1H) className = 'tag-info one-hour-tag';
+                    else if (isTimeTag) className = 'tag-info time-tag';
+
+                    let output = `<div class="${className}">`;
+                    output += `Tag ID: <strong>${tagId}</strong> | `;
+                    output += `Label: <strong>${label}</strong> | `;
+                    output += `Slug: <strong>${slug}</strong> | `;
+                    output += `Events: ${eventCount}`;
+
+                    if (is1H) {
+                        output += `<br><span class="highlight">🔥🔥🔥 THIS IS THE 1H TAG WE NEED! 🔥🔥🔥</span>`;
+
+                        // Show sample events
+                        const samples = tagToEvents.get(tagId).slice(0, 3);
+                        output += '<br>Sample events:';
+                        samples.forEach(evt => {
+                            output += `<br>  - ${evt.substring(0, 70)}`;
+                        });
+                    }
+
+                    output += '</div>';
+                    resultsDiv.innerHTML += output;
+                });
+
+                // Summary of time-based tags
+                log('');
+                log('='.repeat(60));
+                log('⏰ TIME-BASED TAGS SUMMARY:', 'success');
+                log('='.repeat(60));
+
+                sortedTags.forEach(([tagId, tag]) => {
+                    const label = tag.label || '';
+                    const slug = tag.slug || '';
+
+                    if (/[0-9]+h/i.test(label) || label.toLowerCase().includes('hour')) {
+                        log(`  ${tagId}: ${label} (${slug})`, 'success');
+                    }
+                });
+
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCommonTagIds() {
+            clearResults();
+            log('='.repeat(60));
+            log('🔢 TESTING COMMON TAG ID PATTERNS', 'success');
+            log('='.repeat(60));
+
+            // Test IDs around 102531 (4H tag)
+            const testIds = [
+                '102527', '102528', '102529', '102530',  // Before 4H
+                '102531',  // 4H (known)
+                '102532', '102533', '102534', '102535'   // After 4H
+            ];
+
+            for (const tagId of testIds) {
+                await new Promise(resolve => setTimeout(resolve, 500)); // Rate limit
+
+                try {
+                    log(`Testing tag_id=${tagId}...`);
+
+                    const response = await fetch(
+                        `https://gamma-api.polymarket.com/events?tag_id=${tagId}&closed=false&limit=5`
+                    );
+
+                    if (!response.ok) {
+                        log(`  ❌ Failed: ${response.status}`, 'error');
+                        continue;
+                    }
+
+                    const events = await response.json();
+                    log(`  ✅ Got ${events.length} events`);
+
+                    if (events.length > 0) {
+                        const first = events[0];
+                        const title = first.title || 'N/A';
+                        const tags = first.tags || [];
+
+                        log(`  Title: ${title.substring(0, 60)}`);
+
+                        tags.forEach(tag => {
+                            const label = tag.label || '';
+                            const slug = tag.slug || '';
+
+                            if (tag.id === tagId) {
+                                log(`  Tag: ${label} (${slug})`, 'success');
+
+                                if (label === '1H' || slug === '1h') {
+                                    log(`  🔥🔥🔥 FOUND 1H TAG! 🔥🔥🔥`, 'success');
+                                }
+                            }
+                        });
+
+                        // Check markets for time intervals
+                        const markets = first.markets || [];
+                        if (markets.length > 0) {
+                            const question = markets[0].question || '';
+                            log(`  Market: ${question.substring(0, 70)}`);
+
+                            // Try to detect time interval from question
+                            const timeMatch = question.match(/(\d+):00([AP]M)-(\d+):00([AP]M)/i);
+                            if (timeMatch) {
+                                log(`  ⏰ Time pattern found in question`);
+                            }
+                        }
+                    }
+
+                    log('');
+
+                } catch (error) {
+                    log(`  ❌ Error: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Auto-run on load
+        window.onload = () => {
+            log('Ready! Click "Find All Tags" to discover the 1H tag_id', 'success');
+        };
+    </script>
+</body>
+</html>
