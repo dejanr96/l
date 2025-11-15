@@ -30,10 +30,10 @@ if accepting:
         question = m.get('question', 'N/A')
         active = m.get('active')
         closed = m.get('closed')
-        accepting = m.get('accepting_orders')
+        accepting_orders = m.get('accepting_orders')
 
         print(f"\n{i}. {question}")
-        print(f"   active={active}, closed={closed}, accepting_orders={accepting}")
+        print(f"   active={active}, closed={closed}, accepting_orders={accepting_orders}")
 
         # Check if crypto
         q_lower = question.lower()
