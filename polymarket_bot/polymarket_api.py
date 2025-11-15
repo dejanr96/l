@@ -194,6 +194,22 @@ class PolymarketAPI:
                         # Add event info to market for context
                         market['event_title'] = event.get('title', '')
                         market['event_description'] = event.get('description', '')
+
+                        # Parse outcomePrices from JSON string to list
+                        # Field is "outcomePrices" (camelCase) not "outcome_prices"
+                        outcome_prices_str = market.get('outcomePrices', '[]')
+                        try:
+                            import json as json_lib
+                            outcome_prices = json_lib.loads(outcome_prices_str)
+                            # Convert strings to floats
+                            market['outcome_prices'] = [float(p) for p in outcome_prices]
+                        except:
+                            market['outcome_prices'] = []
+
+                        # Normalize other fields
+                        if 'conditionId' in market:
+                            market['condition_id'] = market['conditionId']
+
                         all_markets.append(market)
 
                 print(f"✅ Found {len(all_markets)} total markets in crypto events")
@@ -210,7 +226,11 @@ class PolymarketAPI:
                     is_updown = 'up or down' in question or 'up or down' in event_title
                     is_hourly = any(time in question for time in ['am et', 'pm et'])
 
-                    if is_crypto and (is_updown or is_hourly):
+                    # Only include markets that are accepting orders
+                    # This filters out resolved/past markets
+                    accepting_orders = market.get('acceptingOrders', False)
+
+                    if is_crypto and (is_updown or is_hourly) and accepting_orders:
                         hourly_markets.append(market)
 
                 print(f"✅ Found {len(hourly_markets)} hourly crypto markets")
