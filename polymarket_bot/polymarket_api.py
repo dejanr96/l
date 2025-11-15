@@ -157,26 +157,70 @@ class PolymarketAPI:
 
     def get_hourly_crypto_markets(self) -> List[Dict]:
         """Get hourly Up/Down crypto markets (our target)"""
-        all_markets = self.get_markets()
-        print(f"🔍 DEBUG: Filtering {len(all_markets)} markets for hourly crypto markets...")
+        print(f"🔍 Fetching crypto hourly markets from Gamma API...")
 
-        hourly_markets = []
-        for market in all_markets:
-            question = market.get('question', '').lower()
+        # Use the CORRECT endpoint found via browser DevTools
+        # https://gamma-api.polymarket.com/events?tag_id=102531&closed=false&limit=100
+        try:
+            response = self.session.get(
+                f"{self.gamma_url}/events",
+                params={
+                    'tag_id': '102531',  # Crypto markets tag
+                    'closed': 'false',   # Only open markets
+                    'limit': '100'
+                },
+                timeout=10
+            )
 
-            # Check if it's a crypto up/down hourly market
-            is_crypto = any(token.lower() in question for token in config.TARGET_TOKENS)
-            is_updown = 'up or down' in question
-            is_hourly = any(time in question for time in ['am et', 'pm et'])
+            if response.status_code == 200:
+                events = response.json()
 
-            if is_crypto and is_updown and is_hourly:
-                hourly_markets.append(market)
+                if not isinstance(events, list):
+                    print(f"⚠️  Expected list of events, got {type(events)}")
+                    return []
 
-        print(f"✅ Found {len(hourly_markets)} hourly crypto markets")
-        if hourly_markets:
-            print(f"📋 Sample: {hourly_markets[0].get('question', 'N/A')[:80]}")
+                print(f"✅ Got {len(events)} crypto events from Gamma API")
 
-        return hourly_markets
+                # Extract markets from events
+                all_markets = []
+                for event in events:
+                    markets = event.get('markets', [])
+                    for market in markets:
+                        # Add event info to market for context
+                        market['event_title'] = event.get('title', '')
+                        market['event_description'] = event.get('description', '')
+                        all_markets.append(market)
+
+                print(f"✅ Found {len(all_markets)} total markets in crypto events")
+
+                # Filter for hourly markets
+                hourly_markets = []
+                for market in all_markets:
+                    question = market.get('question', '').lower()
+                    event_title = market.get('event_title', '').lower()
+
+                    # Check if it's a crypto up/down hourly market
+                    is_crypto = any(token.lower() in question or token.lower() in event_title
+                                   for token in config.TARGET_TOKENS)
+                    is_updown = 'up or down' in question or 'up or down' in event_title
+                    is_hourly = any(time in question for time in ['am et', 'pm et'])
+
+                    if is_crypto and (is_updown or is_hourly):
+                        hourly_markets.append(market)
+
+                print(f"✅ Found {len(hourly_markets)} hourly crypto markets")
+                if hourly_markets:
+                    print(f"📋 Sample: {hourly_markets[0].get('question', 'N/A')[:80]}")
+
+                return hourly_markets
+
+            else:
+                print(f"⚠️  Gamma events API error: {response.status_code}")
+                return []
+
+        except Exception as e:
+            print(f"Error fetching crypto hourly markets: {e}")
+            return []
 
     def get_orderbook(self, market_id: str) -> Dict:
         """Get order book for a specific market"""
