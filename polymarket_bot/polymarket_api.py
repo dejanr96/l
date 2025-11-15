@@ -69,21 +69,21 @@ class PolymarketAPI:
                         print(f"🔍 DEBUG: Sample market state:")
                         print(f"   active={sample.get('active')}, closed={sample.get('closed')}, accepting_orders={sample.get('accepting_orders')}")
 
+                    # Primary filter: active AND accepting_orders (ignore 'closed' field)
                     filtered_markets = [m for m in markets if isinstance(m, dict) and
                                        m.get('active', False) and
-                                       not m.get('closed', False) and  # Default: not closed
                                        m.get('accepting_orders', False)]
-                    print(f"🔍 DEBUG: Filtered {before_filter} → {len(filtered_markets)} active/open/accepting markets")
+                    print(f"🔍 DEBUG: Filtered {before_filter} → {len(filtered_markets)} active+accepting markets")
 
                     if filtered_markets:
                         markets = filtered_markets
+                        print(f"✅ Using {len(markets)} markets that are accepting orders")
                     else:
-                        # No markets accepting orders - try just active and not closed
-                        print(f"⚠️  No markets accepting orders. Trying active+open only...")
+                        # Fallback: just active markets
+                        print(f"⚠️  No markets accepting orders. Using active markets only...")
                         markets = [m for m in markets if isinstance(m, dict) and
-                                  m.get('active', False) and
-                                  not m.get('closed', False)]  # Default: not closed
-                        print(f"🔍 DEBUG: Found {len(markets)} active+open markets (may not accept orders)")
+                                  m.get('active', False)]
+                        print(f"🔍 DEBUG: Found {len(markets)} active markets (may not accept orders)")
 
                         if not markets:
                             # Still nothing? Show us why - check original markets
