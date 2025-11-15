@@ -27,9 +27,17 @@ class PolymarketAPI:
             response = self.session.get(f"{self.clob_url}/markets", timeout=10)
             if response.status_code == 200:
                 markets = response.json()
-                if active_only:
-                    markets = [m for m in markets if m.get('active', False)]
+                # Ensure we got a list, not a string or dict
+                if not isinstance(markets, list):
+                    print(f"⚠️  CLOB API returned unexpected format: {type(markets)}")
+                    markets = []
+                elif active_only:
+                    markets = [m for m in markets if isinstance(m, dict) and m.get('active', False)]
                 return markets
+            elif response.status_code == 403:
+                print(f"⚠️  CLOB API blocked (403 Forbidden)")
+            else:
+                print(f"⚠️  CLOB API error: {response.status_code}")
         except Exception as e:
             print(f"Error fetching markets from CLOB: {e}")
 
@@ -37,7 +45,18 @@ class PolymarketAPI:
         try:
             response = self.session.get(f"{self.gamma_url}/markets", timeout=10)
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                # Ensure we got a list
+                if isinstance(data, list):
+                    return data
+                else:
+                    print(f"⚠️  Gamma API returned unexpected format: {type(data)}")
+                    return []
+            elif response.status_code == 403:
+                print(f"⚠️  Gamma API blocked (403 Forbidden)")
+                print(f"💡 APIs are blocked. Use Mock API instead: PolymarketBot(use_mock=True)")
+            else:
+                print(f"⚠️  Gamma API error: {response.status_code}")
         except Exception as e:
             print(f"Error fetching markets from Gamma: {e}")
 
