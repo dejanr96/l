@@ -26,13 +26,33 @@ class PolymarketAPI:
             # Try CLOB API first
             response = self.session.get(f"{self.clob_url}/markets", timeout=10)
             if response.status_code == 200:
-                markets = response.json()
-                # Ensure we got a list, not a string or dict
-                if not isinstance(markets, list):
-                    print(f"⚠️  CLOB API returned unexpected format: {type(markets)}")
+                try:
+                    data = response.json()
+                except:
+                    print(f"⚠️  CLOB API returned non-JSON response")
+                    data = None
+
+                if data is None:
                     markets = []
-                elif active_only:
+                elif isinstance(data, list):
+                    markets = data
+                elif isinstance(data, dict):
+                    # Try common keys where markets might be stored
+                    markets = (data.get('data') or
+                              data.get('markets') or
+                              data.get('results') or
+                              data.get('items') or [])
+                    if not isinstance(markets, list):
+                        print(f"⚠️  CLOB API dict has no markets list. Keys: {list(data.keys())[:5]}")
+                        markets = []
+                else:
+                    print(f"⚠️  CLOB API returned unexpected format: {type(data)}")
+                    markets = []
+
+                # Filter active markets
+                if markets and active_only:
                     markets = [m for m in markets if isinstance(m, dict) and m.get('active', False)]
+
                 return markets
             elif response.status_code == 403:
                 print(f"⚠️  CLOB API blocked (403 Forbidden)")
@@ -45,10 +65,25 @@ class PolymarketAPI:
         try:
             response = self.session.get(f"{self.gamma_url}/markets", timeout=10)
             if response.status_code == 200:
-                data = response.json()
-                # Ensure we got a list
+                try:
+                    data = response.json()
+                except:
+                    print(f"⚠️  Gamma API returned non-JSON response")
+                    return []
+
                 if isinstance(data, list):
                     return data
+                elif isinstance(data, dict):
+                    # Try common keys where markets might be stored
+                    markets = (data.get('data') or
+                              data.get('markets') or
+                              data.get('results') or
+                              data.get('items') or [])
+                    if isinstance(markets, list):
+                        return markets
+                    else:
+                        print(f"⚠️  Gamma API dict has no markets list. Keys: {list(data.keys())[:5]}")
+                        return []
                 else:
                     print(f"⚠️  Gamma API returned unexpected format: {type(data)}")
                     return []
