@@ -61,9 +61,17 @@ class PolymarketAPI:
                 # Filter active markets (must be open and accepting orders)
                 if markets and active_only:
                     before_filter = len(markets)
+                    original_markets = markets  # Keep reference for debug
+
+                    # Debug: Check market states
+                    if before_filter > 0:
+                        sample = markets[0]
+                        print(f"🔍 DEBUG: Sample market state:")
+                        print(f"   active={sample.get('active')}, closed={sample.get('closed')}, accepting_orders={sample.get('accepting_orders')}")
+
                     filtered_markets = [m for m in markets if isinstance(m, dict) and
                                        m.get('active', False) and
-                                       not m.get('closed', True) and
+                                       not m.get('closed', False) and  # Default: not closed
                                        m.get('accepting_orders', False)]
                     print(f"🔍 DEBUG: Filtered {before_filter} → {len(filtered_markets)} active/open/accepting markets")
 
@@ -74,8 +82,21 @@ class PolymarketAPI:
                         print(f"⚠️  No markets accepting orders. Trying active+open only...")
                         markets = [m for m in markets if isinstance(m, dict) and
                                   m.get('active', False) and
-                                  not m.get('closed', True)]
+                                  not m.get('closed', False)]  # Default: not closed
                         print(f"🔍 DEBUG: Found {len(markets)} active+open markets (may not accept orders)")
+
+                        if not markets:
+                            # Still nothing? Show us why - check original markets
+                            print(f"🔍 DEBUG: Analyzing original {len(original_markets)} markets...")
+                            active_count = sum(1 for m in original_markets if m.get('active', False))
+                            not_closed_count = sum(1 for m in original_markets if not m.get('closed', True))
+                            print(f"   Markets with active=True: {active_count}/{len(original_markets)}")
+                            print(f"   Markets with closed=False: {not_closed_count}/{len(original_markets)}")
+
+                            # Last resort: just use active markets even if closed (for testing/viewing)
+                            if active_count > 0:
+                                print(f"⚠️  Using {active_count} active markets (even if closed) for testing...")
+                                markets = [m for m in original_markets if m.get('active', False)]
 
                 if markets:
                     print(f"✅ CLOB API: Returning {len(markets)} markets")
