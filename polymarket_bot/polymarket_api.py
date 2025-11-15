@@ -58,16 +58,29 @@ class PolymarketAPI:
                     print(f"⚠️  CLOB API returned unexpected format: {type(data)}")
                     markets = []
 
-                # Filter active markets
+                # Filter active markets (must be open and accepting orders)
                 if markets and active_only:
                     before_filter = len(markets)
-                    markets = [m for m in markets if isinstance(m, dict) and m.get('active', False)]
-                    print(f"🔍 DEBUG: Filtered {before_filter} → {len(markets)} active markets")
+                    filtered_markets = [m for m in markets if isinstance(m, dict) and
+                                       m.get('active', False) and
+                                       not m.get('closed', True) and
+                                       m.get('accepting_orders', False)]
+                    print(f"🔍 DEBUG: Filtered {before_filter} → {len(filtered_markets)} active/open/accepting markets")
+
+                    if filtered_markets:
+                        markets = filtered_markets
+                    else:
+                        # No markets accepting orders - try just active and not closed
+                        print(f"⚠️  No markets accepting orders. Trying active+open only...")
+                        markets = [m for m in markets if isinstance(m, dict) and
+                                  m.get('active', False) and
+                                  not m.get('closed', True)]
+                        print(f"🔍 DEBUG: Found {len(markets)} active+open markets (may not accept orders)")
 
                 if markets:
                     print(f"✅ CLOB API: Returning {len(markets)} markets")
                 else:
-                    print(f"⚠️  CLOB API: No markets found")
+                    print(f"⚠️  CLOB API: No active markets found")
 
                 return markets
             elif response.status_code == 403:
@@ -124,6 +137,7 @@ class PolymarketAPI:
     def get_hourly_crypto_markets(self) -> List[Dict]:
         """Get hourly Up/Down crypto markets (our target)"""
         all_markets = self.get_markets()
+        print(f"🔍 DEBUG: Filtering {len(all_markets)} markets for hourly crypto markets...")
 
         hourly_markets = []
         for market in all_markets:
@@ -136,6 +150,10 @@ class PolymarketAPI:
 
             if is_crypto and is_updown and is_hourly:
                 hourly_markets.append(market)
+
+        print(f"✅ Found {len(hourly_markets)} hourly crypto markets")
+        if hourly_markets:
+            print(f"📋 Sample: {hourly_markets[0].get('question', 'N/A')[:80]}")
 
         return hourly_markets
 
