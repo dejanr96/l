@@ -160,12 +160,14 @@ class PolymarketAPI:
         print(f"🔍 Fetching crypto hourly markets from Gamma API...")
 
         # Use the CORRECT endpoint found via browser DevTools
-        # https://gamma-api.polymarket.com/events?tag_id=102531&closed=false&limit=100
+        # https://gamma-api.polymarket.com/events?tag_id=102127&closed=false&limit=100
+        # tag_id=102127 is for 1H (1-hour) markets - @FirstOrder's strategy
+        # tag_id=102531 is for 4H (4-hour) markets - WRONG!
         try:
             response = self.session.get(
                 f"{self.gamma_url}/events",
                 params={
-                    'tag_id': '102531',  # Crypto markets tag
+                    'tag_id': '102127',  # 1H crypto markets tag (CORRECT!)
                     'closed': 'false',   # Only open markets
                     'limit': '100'
                 },
