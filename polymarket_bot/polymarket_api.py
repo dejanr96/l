@@ -35,15 +35,24 @@ class PolymarketAPI:
                 if data is None:
                     markets = []
                 elif isinstance(data, list):
+                    print(f"🔍 DEBUG: CLOB API returned list with {len(data)} items")
                     markets = data
                 elif isinstance(data, dict):
                     # Try common keys where markets might be stored
+                    print(f"🔍 DEBUG: CLOB API returned dict with keys: {list(data.keys())[:10]}")
+
                     markets = (data.get('data') or
                               data.get('markets') or
                               data.get('results') or
                               data.get('items') or [])
-                    if not isinstance(markets, list):
+
+                    if isinstance(markets, list):
+                        print(f"🔍 DEBUG: Extracted {len(markets)} markets from dict")
+                    else:
                         print(f"⚠️  CLOB API dict has no markets list. Keys: {list(data.keys())[:5]}")
+                        print(f"🔍 DEBUG: Trying to inspect dict values...")
+                        for key, value in list(data.items())[:3]:
+                            print(f"   '{key}': {type(value)} - {str(value)[:50] if not isinstance(value, (list, dict)) else f'len={len(value) if isinstance(value, (list, dict)) else 0}'}")
                         markets = []
                 else:
                     print(f"⚠️  CLOB API returned unexpected format: {type(data)}")
@@ -51,7 +60,14 @@ class PolymarketAPI:
 
                 # Filter active markets
                 if markets and active_only:
+                    before_filter = len(markets)
                     markets = [m for m in markets if isinstance(m, dict) and m.get('active', False)]
+                    print(f"🔍 DEBUG: Filtered {before_filter} → {len(markets)} active markets")
+
+                if markets:
+                    print(f"✅ CLOB API: Returning {len(markets)} markets")
+                else:
+                    print(f"⚠️  CLOB API: No markets found")
 
                 return markets
             elif response.status_code == 403:
@@ -72,17 +88,25 @@ class PolymarketAPI:
                     return []
 
                 if isinstance(data, list):
+                    print(f"🔍 DEBUG: Gamma API returned list with {len(data)} items")
                     return data
                 elif isinstance(data, dict):
+                    print(f"🔍 DEBUG: Gamma API returned dict with keys: {list(data.keys())[:10]}")
+
                     # Try common keys where markets might be stored
                     markets = (data.get('data') or
                               data.get('markets') or
                               data.get('results') or
                               data.get('items') or [])
+
                     if isinstance(markets, list):
+                        print(f"✅ Gamma API: Returning {len(markets)} markets")
                         return markets
                     else:
                         print(f"⚠️  Gamma API dict has no markets list. Keys: {list(data.keys())[:5]}")
+                        print(f"🔍 DEBUG: Trying to inspect dict values...")
+                        for key, value in list(data.items())[:3]:
+                            print(f"   '{key}': {type(value)} - {str(value)[:50] if not isinstance(value, (list, dict)) else f'len={len(value) if isinstance(value, (list, dict)) else 0}'}")
                         return []
                 else:
                     print(f"⚠️  Gamma API returned unexpected format: {type(data)}")
