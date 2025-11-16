@@ -6,7 +6,7 @@ Configuration for Polymarket Trading Bot
 PAPER_TRADING = True  # Start with paper trading!
 
 # Arbitrage Settings
-MIN_ARBITRAGE_PROFIT = 0.02  # Minimum 2¢ profit to execute
+MIN_ARBITRAGE_PROFIT = 0.005  # Minimum 0.5¢ profit to execute (catch smaller opportunities)
 MAX_POSITION_SIZE = 500  # Max shares per position
 STANDARD_POSITION_SIZE = 151  # FirstOrder's standard size
 
@@ -31,7 +31,7 @@ GAMMA_API_URL = "https://gamma-api.polymarket.com"
 STRAPI_API_URL = "https://strapi-matic.poly.market"
 
 # Update frequency
-SCAN_INTERVAL = 5  # Scan for opportunities every 5 seconds
+SCAN_INTERVAL = 0.1  # Scan for opportunities every 100ms (10x per second)
 POSITION_CHECK_INTERVAL = 30  # Check positions every 30 seconds
 
 # Paper Trading Settings
